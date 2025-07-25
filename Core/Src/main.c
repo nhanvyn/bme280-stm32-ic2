@@ -31,7 +31,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define BME280_ADDR 0x76
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -99,8 +99,13 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  uint8_t temp_reg = 0xFA;
+  uint8_t rxBuff[3];
   while (1)
   {
+	  HAL_I2C_Master_Transmit(&hi2c1, BME280_ADDR << 1, &temp_reg, 1,  10);
+	  HAL_I2C_Master_Receive(&hi2c1, (BME280_ADDR << 1) | 0x01, rxBuff, 3, 10);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
