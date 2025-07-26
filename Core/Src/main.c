@@ -101,11 +101,20 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   uint8_t temp_reg = 0xFA;
   uint8_t rxBuff[3];
+
+  if (HAL_I2C_IsDeviceReady(&hi2c1, BME280_ADDR << 1, 1, 100) == HAL_OK) {
+      // Device found!
+      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET); // Turn on LED
+  } else {
+      // Device not responding
+//      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
+  }
+
   while (1)
   {
 	  HAL_I2C_Master_Transmit(&hi2c1, BME280_ADDR << 1, &temp_reg, 1,  10);
 	  HAL_I2C_Master_Receive(&hi2c1, (BME280_ADDR << 1) | 0x01, rxBuff, 3, 10);
-
+	  HAL_Delay(500);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
