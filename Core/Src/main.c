@@ -32,6 +32,19 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define BME280_ADDR 0x76
+#define CTRL_MEAS_REG 0xF4
+
+
+// Oversampling settings: How much samples the BME280 take into consideration before calculate the avg the temperature / pressure
+#define OSRS_0    	0x00
+#define OSRS_1     0x01
+#define OSRS_2     0x02
+
+#define MODE_SLEEP      0x00
+#define MODE_FORCED     0x01
+#define MODE_NORMAL     0x03
+
+#define timeout 10
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -59,6 +72,24 @@ static void MX_I2C1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+int bme280_cofig()
+{
+	uint8_t writedata = (OSRS_2 << 5) | (OSRS_2 << 2) | MODE_NORMAL;
+	uint8_t readdata = 0;
+	HAL_I2C_Mem_Write(&hi2c1, BME280_ADDR << 1, CTRL_MEAS_REG, 1, &writedata, 1, timeout);
+
+	HAL_I2C_Mem_Read(&hi2c1, BME280_ADDR << 1, CTRL_MEAS_REG, 1, &readdata, 1, timeout);
+
+	if (readdata != writedata)
+	{
+		return -1;
+	}
+
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
+	return 0;
+}
+
 
 /* USER CODE END 0 */
 
@@ -100,20 +131,16 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   uint8_t temp_reg = 0xFA;
+  uint8_t id_reg = 0xD0;
   uint8_t rxBuff[3];
+  uint8_t config_data[2];
 
-  if (HAL_I2C_IsDeviceReady(&hi2c1, BME280_ADDR << 1, 1, 100) == HAL_OK) {
-      // Device found!
-      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET); // Turn on LED
-  } else {
-      // Device not responding
-//      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
-  }
+  bme280_cofig();
 
   while (1)
   {
-	  HAL_I2C_Master_Transmit(&hi2c1, BME280_ADDR << 1, &temp_reg, 1,  10);
-	  HAL_I2C_Master_Receive(&hi2c1, (BME280_ADDR << 1) | 0x01, rxBuff, 3, 10);
+	  HAL_I2C_Master_Transmit(&hi2c1, BME280_ADDR << 1, &id_reg, 1,  10);
+	  HAL_I2C_Master_Receive(&hi2c1, (BME280_ADDR << 1) | 0x01, rxBuff, 1, 10);
 	  HAL_Delay(500);
     /* USER CODE END WHILE */
 
