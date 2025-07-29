@@ -34,7 +34,6 @@
 #define BME280_ADDR 0x76
 #define CTRL_MEAS_REG 0xF4
 
-
 // Oversampling settings: How much samples the BME280 take into consideration before calculate the avg the temperature / pressure
 #define OSRS_0    	0x00
 #define OSRS_1     0x01
@@ -45,6 +44,9 @@
 #define MODE_NORMAL     0x03
 
 #define timeout 10
+
+#define TEMP_MSB_REG 0xFA
+#define ID_REG 0xD0
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -73,7 +75,10 @@ static void MX_I2C1_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-int bme280_cofig()
+int32_t rawTemp = 0;
+
+
+int BME280_Config()
 {
 	uint8_t writedata = (OSRS_2 << 5) | (OSRS_2 << 2) | MODE_NORMAL;
 	uint8_t readdata = 0;
@@ -89,6 +94,21 @@ int bme280_cofig()
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
 	return 0;
 }
+
+int BME280_ReadTemp()
+{
+	uint8_t chipID;
+	uint8_t rawData[3];
+	HAL_I2C_Mem_Read(&hi2c1, BME280_ADDR << 1, ID_REG, 1, &chipID, 1, timeout);
+	if (chipID == 0x60) {
+		HAL_I2C_Mem_Read(&hi2c1, BME280_ADDR << 1, TEMP_MSB_REG, 1, rawData, 3, timeout);
+		rawTemp = (rawData[0] << 12) | (rawData[1] << 4) | (rawData[2] >> 4);
+		return 1;
+	}
+	return 0;
+}
+
+
 
 
 /* USER CODE END 0 */
@@ -130,18 +150,17 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  uint8_t temp_reg = 0xFA;
-  uint8_t id_reg = 0xD0;
-  uint8_t rxBuff[3];
-  uint8_t config_data[2];
+//  uint8_t temp_reg = 0xFA;
+//  uint8_t id_reg = 0xD0;
+//  uint8_t rxBuff[3];
+//  uint8_t config_data[2];
 
-  bme280_cofig();
+  BME280_Config();
 
   while (1)
   {
-	  HAL_I2C_Master_Transmit(&hi2c1, BME280_ADDR << 1, &id_reg, 1,  10);
-	  HAL_I2C_Master_Receive(&hi2c1, (BME280_ADDR << 1) | 0x01, rxBuff, 1, 10);
-	  HAL_Delay(500);
+	  BME280_ReadTemp();
+	  HAL_Delay(100);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
