@@ -47,6 +47,9 @@
 
 #define TEMP_MSB_REG 0xFA
 #define ID_REG 0xD0
+
+#define CHIP_ID 0x60
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -77,7 +80,6 @@ static void MX_I2C1_Init(void);
 
 int32_t rawTemp = 0;
 
-
 int BME280_Config()
 {
 	uint8_t writedata = (OSRS_2 << 5) | (OSRS_2 << 2) | MODE_NORMAL;
@@ -100,16 +102,13 @@ int BME280_ReadTemp()
 	uint8_t chipID;
 	uint8_t rawData[3];
 	HAL_I2C_Mem_Read(&hi2c1, BME280_ADDR << 1, ID_REG, 1, &chipID, 1, timeout);
-	if (chipID == 0x60) {
+	if (chipID == CHIP_ID) {
 		HAL_I2C_Mem_Read(&hi2c1, BME280_ADDR << 1, TEMP_MSB_REG, 1, rawData, 3, timeout);
 		rawTemp = (rawData[0] << 12) | (rawData[1] << 4) | (rawData[2] >> 4);
 		return 1;
 	}
 	return 0;
 }
-
-
-
 
 /* USER CODE END 0 */
 
