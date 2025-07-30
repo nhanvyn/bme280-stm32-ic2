@@ -50,6 +50,8 @@
 
 #define CHIP_ID 0x60
 
+#define TRIM_REG 0x88
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -78,7 +80,11 @@ static void MX_I2C1_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+uint16_t dig_T1;
+int16_t  dig_T2, dig_T3;
 int32_t rawTemp = 0;
+float celciusTemp = 0;
+
 
 int BME280_Config()
 {
@@ -97,18 +103,44 @@ int BME280_Config()
 	return 0;
 }
 
-int BME280_ReadTemp()
+void Calib_Data_Read()
+{
+	uint8_t calibData[6];
+	HAL_I2C_Mem_Read(&hi2c1, BME280_ADDR << 1, TRIM_REG, 1, calibData, 6, timeout);
+
+	dig_T1 = (uint16_t)((calibData[1] << 8) | calibData[0]);
+	dig_T2 = (int16_t)((calibData[3] << 8) | calibData[2]);
+	dig_T3 = (int16_t)((calibData[5] << 8) | calibData[4]);
+}
+
+int32_t BME280_ReadTemp()
 {
 	uint8_t chipID;
 	uint8_t rawData[3];
 	HAL_I2C_Mem_Read(&hi2c1, BME280_ADDR << 1, ID_REG, 1, &chipID, 1, timeout);
-	if (chipID == CHIP_ID) {
+	if (chipID == CHIP_ID)
+	{
 		HAL_I2C_Mem_Read(&hi2c1, BME280_ADDR << 1, TEMP_MSB_REG, 1, rawData, 3, timeout);
-		rawTemp = (rawData[0] << 12) | (rawData[1] << 4) | (rawData[2] >> 4);
-		return 1;
+		return (rawData[0] << 12) | (rawData[1] << 4) | (rawData[2] >> 4);
 	}
 	return 0;
 }
+
+// Returns temperature in DegC, resolution is 0.01 DegC. Output value of “5123” equals 51.23 DegC.
+// t_fine carries fine temperature as global value
+int32_t t_fine;
+int32_t BME280_compensate_T_int32(int32_t adc_T)
+{
+	int32_t var1, var2, T;
+	var1 = ((((adc_T>>3) - ((int32_t)dig_T1<<1))) * ((int32_t)dig_T2)) >> 11;
+	var2 = (((((adc_T>>4) - ((int32_t)dig_T1)) * ((adc_T>>4) - ((int32_t)dig_T1))) >> 12) * ((int32_t)dig_T3)) >> 14;
+	t_fine = var1 + var2;
+	T = (t_fine * 5 + 128) >> 8;
+	return T;
+}
+
+
+
 
 /* USER CODE END 0 */
 
@@ -156,9 +188,12 @@ int main(void)
 
   BME280_Config();
 
+
   while (1)
   {
-	  BME280_ReadTemp();
+	  Calib_Data_Read();
+	  rawTemp = BME280_ReadTemp();
+	  celciusTemp = BME280_compensate_T_int32(rawTemp) / 100.0;
 	  HAL_Delay(100);
     /* USER CODE END WHILE */
 
