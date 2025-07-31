@@ -21,7 +21,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -83,7 +85,9 @@ static void MX_I2C1_Init(void);
 uint16_t dig_T1;
 int16_t  dig_T2, dig_T3;
 int32_t rawTemp = 0;
-float celciusTemp = 0;
+int32_t celcius_x100 = 0;
+int32_t t_fine = 0;
+char buffer[20];
 
 
 int BME280_Config()
@@ -128,7 +132,6 @@ int32_t BME280_ReadTemp()
 
 // Returns temperature in DegC, resolution is 0.01 DegC. Output value of “5123” equals 51.23 DegC.
 // t_fine carries fine temperature as global value
-int32_t t_fine;
 int32_t BME280_compensate_T_int32(int32_t adc_T)
 {
 	int32_t var1, var2, T;
@@ -138,8 +141,6 @@ int32_t BME280_compensate_T_int32(int32_t adc_T)
 	T = (t_fine * 5 + 128) >> 8;
 	return T;
 }
-
-
 
 
 /* USER CODE END 0 */
@@ -181,19 +182,16 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-//  uint8_t temp_reg = 0xFA;
-//  uint8_t id_reg = 0xD0;
-//  uint8_t rxBuff[3];
-//  uint8_t config_data[2];
 
   BME280_Config();
-
-
   while (1)
   {
 	  Calib_Data_Read();
 	  rawTemp = BME280_ReadTemp();
-	  celciusTemp = BME280_compensate_T_int32(rawTemp) / 100.0;
+	  celcius_x100 = BME280_compensate_T_int32(rawTemp);
+
+	  sprintf(buffer, "%ld.%02d\n", celcius_x100 / 100 , abs(celcius_x100 % 100));
+	  HAL_UART_Transmit(&huart2,(uint8_t *) buffer, strlen(buffer), HAL_MAX_DELAY);
 	  HAL_Delay(100);
     /* USER CODE END WHILE */
 
