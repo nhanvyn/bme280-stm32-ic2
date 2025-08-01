@@ -54,6 +54,10 @@
 
 #define TRIM_REG 0x88
 
+typedef uint8_t bool_t;
+#define TRUE  1
+#define FALSE 0
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -88,6 +92,8 @@ int32_t rawTemp = 0;
 int32_t celcius_x100 = 0;
 int32_t t_fine = 0;
 char buffer[20];
+uint8_t log_enabled = TRUE;
+
 
 
 int BME280_Config()
@@ -142,7 +148,13 @@ int32_t BME280_compensate_T_int32(int32_t adc_T)
 	return T;
 }
 
-
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	if (GPIO_Pin == GPIO_PIN_13)
+	{
+		log_enabled = !log_enabled;
+	}
+}
 /* USER CODE END 0 */
 
 /**
@@ -184,15 +196,18 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 
   BME280_Config();
+  Calib_Data_Read();
+
   while (1)
   {
-	  Calib_Data_Read();
-	  rawTemp = BME280_ReadTemp();
-	  celcius_x100 = BME280_compensate_T_int32(rawTemp);
-
-	  sprintf(buffer, "%ld.%02d\n", celcius_x100 / 100 , abs(celcius_x100 % 100));
-	  HAL_UART_Transmit(&huart2,(uint8_t *) buffer, strlen(buffer), HAL_MAX_DELAY);
-	  HAL_Delay(100);
+	  if (log_enabled)
+	  {
+		  rawTemp = BME280_ReadTemp();
+		  celcius_x100 = BME280_compensate_T_int32(rawTemp);
+		  sprintf(buffer, "%ld.%02d\n", celcius_x100 / 100 , abs(celcius_x100 % 100));
+		  HAL_UART_Transmit(&huart2,(uint8_t *) buffer, strlen(buffer), HAL_MAX_DELAY);
+		  HAL_Delay(100);
+	  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -347,6 +362,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
